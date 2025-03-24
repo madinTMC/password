@@ -32,17 +32,20 @@ def decrypt_password(encrypted_password, key):
 def generate_strong_password():
     chars = string.ascii_letters + string.digits + string.punctuation
     password = "".join(random.choice(chars) for _ in range(12))
-    password_entry.delete(0, tk.END)
-    password_entry.insert(0, password)
+    return password  # Ensure it returns the password instead of modifying UI
 
-def save_password():
-    service = service_entry.get().strip()
-    username = username_entry.get().strip()
-    password = password_entry.get().strip()
+
+def save_password(service=None, username=None, password=None):
+    # If called from UI, get values from entry fields
+    if service is None or username is None or password is None:
+        service = service_entry.get().strip()
+        username = username_entry.get().strip()
+        password = password_entry.get().strip()
 
     if not service or not username or not password:
-        messagebox.showwarning("Input Error", "All fields are required!")
-        return
+        if service is None:  # Only show messagebox if called from UI
+            messagebox.showwarning("Input Error", "All fields are required!")
+        return False
 
     encrypted_password = encrypt_password(password, key)
 
@@ -57,30 +60,27 @@ def save_password():
     with open(PASSWORD_FILE, "w") as file:
         json.dump(passwords, file, indent=4)
 
-    messagebox.showinfo("Success", f"Password saved for {service}!")
-    service_entry.delete(0, tk.END)
-    username_entry.delete(0, tk.END)
-    password_entry.delete(0, tk.END)
+    if service is None:  # UI cleanup only if called from UI
+        messagebox.showinfo("Success", f"Password saved for {service}!")
+        service_entry.delete(0, tk.END)
+        username_entry.delete(0, tk.END)
+        password_entry.delete(0, tk.END)
 
-def retrieve_password():
-    service = simpledialog.askstring("Retrieve Password", "Enter service name:")
-    
-    if not service:
-        return
+    return True  # Return success for testing
 
+
+def retrieve_password(service):
     if not os.path.exists(PASSWORD_FILE):
-        messagebox.showerror("Error", "No saved passwords found!")
-        return
+        return None
 
     with open(PASSWORD_FILE, "r") as file:
         passwords = json.load(file)
 
     if service in passwords:
-        username = passwords[service]["username"]
         decrypted_password = decrypt_password(passwords[service]["password"], key)
-        messagebox.showinfo("Retrieved Password", f"Service: {service}\nUsername: {username}\nPassword: {decrypted_password}")
-    else:
-        messagebox.showerror("Error", "No password found for this service!")
+        return decrypted_password  # Return the password instead of showing a messagebox
+    return None
+
 
 def copy_to_clipboard():
     password = password_entry.get()
